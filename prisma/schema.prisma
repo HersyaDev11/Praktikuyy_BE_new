@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String?  // Password untuk login dengan email
+  wallet    String?  @unique // Alamat wallet crypto user (misal: MetaMask 0x...)
+  role      String   @default("MAHASISWA") // "ADMIN", "DOSEN", "MAHASISWA"
+  createdAt DateTime @default(now())
+  
+  certificates Certificate[]
+  nilaiList    Nilai[]      // Nilai milik mahasiswa ini
+  tugasList    Tugas[]      // Tugas yang dikumpulkan mahasiswa ini
+  enrollments  Enrollment[] // Kelas yang diikuti mahasiswa
+}
+
+model Practicum {
+  id            Int      @id @default(autoincrement())
+  title         String
+  code          String   @unique
+  description   String
+  instructor    String
+  studentsCount Int      @default(0)
+  status        String   @default("Aktif")
+  color         String?  // Class tailwind (contoh: "from-blue-500 to-cyan-400")
+  iconType      String?  // Identifier untuk icon (contoh: "physics", "blockchain")
+  createdAt     DateTime @default(now())
+
+  tokens        Token[]  // Daftar token untuk praktikum ini
+  moduls        Modul[]  // Daftar modul untuk praktikum ini
+  tugasList     Tugas[]  // Daftar tugas untuk praktikum ini
+  nilaiList     Nilai[]  // Daftar nilai untuk praktikum ini
+  enrollments   Enrollment[] // Mahasiswa yang terdaftar
+}
+
+model Token {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  practicumId Int
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  practicum   Practicum @relation(fields: [practicumId], references: [id])
+}
+
+model Modul {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String?  // Isi materi atau deskripsi modul
+  order       Int      @default(1) // Urutan modul (Modul 1, 2, 3...)
+  practicumId Int
+  createdAt   DateTime @default(now())
+
+  practicum   Practicum @relation(fields: [practicumId], references: [id])
+}
+
+model Tugas {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  dueDate     String?  // Tenggat waktu
+  fileUrl     String?  // URL file tugas yang dikumpulkan
+  status      String   @default("Belum Dikumpulkan") // "Belum Dikumpulkan", "Dikumpulkan", "Dinilai"
+  practicumId Int
+  userId      Int      // Mahasiswa yang mengumpulkan
+  createdAt   DateTime @default(now())
+
+  practicum   Practicum @relation(fields: [practicumId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Nilai {
+  id          Int      @id @default(autoincrement())
+  score       Float    // Nilai numerik (0-100)
+  category    String   // "Pretest", "Posttest", "Laporan", "Tugas"
+  notes       String?  // Catatan dari dosen
+  practicumId Int
+  userId      Int      // Mahasiswa yang dinilai
+  createdAt   DateTime @default(now())
+
+  practicum   Practicum @relation(fields: [practicumId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Certificate {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  courseName   String
+  grade        String
+  txHash       String?  // Hash transaksi blockchain sebagai bukti NFT diterbitkan
+  nftTokenId   String?  // Token ID dari NFT yang dicetak
+  issuedAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Enrollment {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  practicumId Int
+  enrolledAt  DateTime @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+  practicum   Practicum @relation(fields: [practicumId], references: [id])
+
+  @@unique([userId, practicumId]) // Satu mahasiswa hanya bisa enroll 1x per kelas
+}
